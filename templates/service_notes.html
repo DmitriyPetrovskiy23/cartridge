@@ -21,10 +21,10 @@
                         <tr>
                             <th>Номер</th>
                             <th>Дата</th>
+                            <th>Отдел</th>
                             <th>Получатель</th>
                             <th>Картридж</th>
                             <th>Кол-во</th>
-                            <th>Статус</th>
                             <th>Действия</th>
                         </tr>
                     </thead>
@@ -33,20 +33,10 @@
                         <tr>
                             <td><strong>{{ note.note_number }}</strong></td>
                             <td>{{ note.created_date.strftime('%d.%m.%Y') }}</td>
+                            <td>{{ note.recipient.department.name if note.recipient and note.recipient.department else '-' }}</td>
                             <td>{{ note.recipient.full_name if note.recipient else '-' }}</td>
                             <td>{{ note.cartridge.article if note.cartridge else '-' }}</td>
                             <td>{{ note.quantity }}</td>
-                            <td>
-                                {% if note.status == 'выдано' %}
-                                <span class="badge bg-success">{{ note.status }}</span>
-                                {% elif note.status == 'возврат' %}
-                                <span class="badge bg-info">{{ note.status }}</span>
-                                {% elif note.status == 'запрошено' %}
-                                <span class="badge bg-warning">{{ note.status }}</span>
-                                {% else %}
-                                <span class="badge bg-secondary">{{ note.status }}</span>
-                                {% endif %}
-                            </td>
                             <td>
                                 <a href="/service-notes/{{ note.id }}/print" class="btn btn-sm btn-outline-primary" title="Скачать Word">
                                     <i class="bi bi-file-earmark-word"></i>
@@ -99,51 +89,36 @@
                     {% if employees and locations %}
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Автор (кто создает) *</label>
-                            <select name="author_id" class="form-select" required>
-                                <option value="">Выберите сотрудника</option>
-                                {% for emp in employees %}
-                                <option value="{{ emp.id }}">{{ emp.full_name }}</option>
+                            <label class="form-label">Отдел получателя *</label>
+                            <select id="deptSelect" class="form-select" required>
+                                <option value="">Выберите отдел</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}">{{ dept.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Получатель *</label>
                             <select name="recipient_id" class="form-select" id="recipientSelect" required>
-                                <option value="">Выберите сотрудника</option>
+                                <option value="">Сначала выберите отдел</option>
                                 {% for emp in employees %}
-                                <option value="{{ emp.id }}" data-dept="{{ emp.department.name if emp.department else '' }}">
-                                    {{ emp.full_name }}
+                                <option value="{{ emp.id }}" data-dept-id="{{ emp.department_id or '' }}" style="display: none;">
+                                    {{ emp.full_name }} - {{ emp.position or '' }}
                                 </option>
                                 {% endfor %}
                             </select>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Отдел получателя</label>
-                        <input type="text" id="deptField" class="form-control" readonly>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Картридж *</label>
-                            <select name="cartridge_id" class="form-select" id="cartridgeSelect" required>
-                                <option value="">Выберите картридж</option>
-                                {% for loc in locations %}
-                                <option value="{{ loc.cartridge_id }}" data-box="{{ loc.box_id }}" data-qty="{{ loc.quantity }}">
-                                    {{ loc.cartridge.article }} - {{ loc.cartridge.model }} ({{ loc.quantity }} шт.)
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Ящик склада *</label>
-                            <select name="box_id" class="form-select" id="boxSelect" required>
-                                <option value="">Выберите ящик</option>
-                                {% for b in boxes %}
-                                <option value="{{ b.id }}">{{ b.box_number }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                        <label class="form-label">Картридж *</label>
+                        <select name="cartridge_id" class="form-select" id="cartridgeSelect" required>
+                            <option value="">Выберите картридж</option>
+                            {% for loc in locations %}
+                            <option value="{{ loc.cartridge_id }}" data-qty="{{ loc.quantity }}">
+                                {{ loc.cartridge.article }} - {{ loc.cartridge.model }} ({{ loc.quantity }} шт. в наличии)
+                            </option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="row">
                         <div class="col-md-4 mb-3">
@@ -183,17 +158,22 @@
 
 {% block scripts %}
 <script>
-document.getElementById('recipientSelect')?.addEventListener('change', function() {
-    const selected = this.options[this.selectedIndex];
-    document.getElementById('deptField').value = selected.dataset.dept || '';
+document.getElementById('deptSelect')?.addEventListener('change', function() {
+    const selectedDeptId = this.value;
+    const recipientSelect = document.getElementById('recipientSelect');
+    const options = recipientSelect.querySelectorAll('option[data-dept-id]');
+    
+    recipientSelect.value = '';
+    recipientSelect.options[0].textContent = selectedDeptId ? 'Выберите сотрудника' : 'Сначала выберите отдел';
+    
+    options.forEach(opt => {
+        if (selectedDeptId && opt.dataset.deptId === selectedDeptId) {
+            opt.style.display = '';
+        } else {
+            opt.style.display = 'none';
+        }
+    });
 });
 
-document.getElementById('cartridgeSelect')?.addEventListener('change', function() {
-    const selected = this.options[this.selectedIndex];
-    const boxId = selected.dataset.box;
-    if (boxId) {
-        document.getElementById('boxSelect').value = boxId;
-    }
-});
 </script>
 {% endblock %}

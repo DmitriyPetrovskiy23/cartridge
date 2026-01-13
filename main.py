@@ -80,24 +80,20 @@ async def create_cartridge(
     printer_type: str = Form(None),
     color: str = Form(None),
     status: str = Form("новый"),
-    capacity: int = Form(None),
-    production_date: str = Form(None),
-    warranty_months: int = Form(12),
+    capacity: str = Form(""),
+    initial_quantity: str = Form("0"),
     db: Session = Depends(get_db)
 ):
-    prod_date = None
-    if production_date:
-        prod_date = datetime.strptime(production_date, "%Y-%m-%d").date()
-    
+    qty = int(initial_quantity) if initial_quantity else 0
     cartridge = Cartridge(
         article=article,
         model=model,
         printer_type=printer_type,
         color=color,
         status=status,
-        capacity=capacity,
-        production_date=prod_date,
-        warranty_months=warranty_months
+        capacity=int(capacity) if capacity else None,
+        initial_quantity=qty,
+        total_quantity=qty
     )
     db.add(cartridge)
     db.commit()
@@ -116,6 +112,7 @@ async def get_cartridge(cartridge_id: int, db: Session = Depends(get_db)):
         "printer_type": cartridge.printer_type,
         "color": cartridge.color,
         "status": cartridge.status,
+        "total_quantity": cartridge.total_quantity or 0,
         "capacity": cartridge.capacity
     }
 
@@ -129,29 +126,54 @@ async def edit_cartridge(
     color: str = Form(""),
     status: str = Form("новый"),
     capacity: str = Form(""),
+    add_quantity: str = Form("0"),
     db: Session = Depends(get_db)
 ):
+    from urllib.parse import quote
     cartridge = db.query(Cartridge).filter(Cartridge.id == cartridge_id).first()
     if not cartridge:
-        raise HTTPException(status_code=404, detail="Картридж не найден")
+        return RedirectResponse(url="/cartridges?error=" + quote("Картридж не найден"), status_code=303)
+    
+    add_qty = int(add_quantity) if add_quantity else 0
+    
     cartridge.article = article
     cartridge.model = model
     cartridge.printer_type = printer_type if printer_type else None
     cartridge.color = color if color else None
     cartridge.status = status
     cartridge.capacity = int(capacity) if capacity else None
+    
+    if add_qty > 0:
+        cartridge.initial_quantity = (cartridge.initial_quantity or 0) + add_qty
+        cartridge.total_quantity = (cartridge.total_quantity or 0) + add_qty
+    
     db.commit()
     return RedirectResponse(url="/cartridges", status_code=303)
 
 
 @app.post("/cartridges/{cartridge_id}/delete")
 async def delete_cartridge(cartridge_id: int, db: Session = Depends(get_db)):
+    from urllib.parse import quote
     cartridge = db.query(Cartridge).filter(Cartridge.id == cartridge_id).first()
     if not cartridge:
-        raise HTTPException(status_code=404, detail="Картридж не найден")
+        return RedirectResponse(url="/cartridges?error=" + quote("Картридж не найден"), status_code=303)
+    
+    if cartridge.total_quantity and cartridge.total_quantity > 0:
+        msg = f"Нельзя удалить картридж: общее количество {cartridge.total_quantity} шт. Сначала установите 0."
+        return RedirectResponse(url="/cartridges?error=" + quote(msg), status_code=303)
+    
+    service_notes_count = db.query(ServiceNote).filter(ServiceNote.cartridge_id == cartridge_id).count()
+    if service_notes_count > 0:
+        msg = f"Нельзя удалить картридж: есть {service_notes_count} служебных записок. Сначала удалите их."
+        return RedirectResponse(url="/cartridges?error=" + quote(msg), status_code=303)
+    
+    movements_count = db.query(CartridgeMovement).filter(CartridgeMovement.cartridge_id == cartridge_id).count()
+    if movements_count > 0:
+        db.query(CartridgeMovement).filter(CartridgeMovement.cartridge_id == cartridge_id).delete()
+    
     db.delete(cartridge)
     db.commit()
-    return RedirectResponse(url="/cartridges", status_code=303)
+    return RedirectResponse(url="/cartridges?success=" + quote("Картридж удален"), status_code=303)
 
 
 @app.get("/warehouses", response_class=HTMLResponse)
@@ -162,12 +184,21 @@ async def warehouses_page(request: Request, db: Session = Depends(get_db)):
     locations = db.query(CartridgeLocation).filter(
         CartridgeLocation.status == "на складе"
     ).all()
+    
+    undistributed = []
+    for c in cartridges:
+        distributed = sum(loc.quantity for loc in c.locations if loc.quantity)
+        available = (c.total_quantity or 0) - distributed
+        if available > 0:
+            undistributed.append({"cartridge": c, "available": available, "distributed": distributed})
+    
     return templates.TemplateResponse("warehouses.html", {
         "request": request, 
         "warehouses": warehouses,
         "boxes": boxes,
         "cartridges": cartridges,
-        "locations": locations
+        "locations": locations,
+        "undistributed": undistributed
     })
 
 
@@ -231,12 +262,21 @@ async def edit_warehouse(
 
 @app.post("/warehouses/{warehouse_id}/delete")
 async def delete_warehouse(warehouse_id: int, db: Session = Depends(get_db)):
+    from urllib.parse import quote
     warehouse = db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()
     if not warehouse:
-        raise HTTPException(status_code=404, detail="Склад не найден")
+        return RedirectResponse(url="/warehouses?error=" + quote("Склад не найден"), status_code=303)
+    
+    boxes = db.query(Box).filter(Box.warehouse_id == warehouse_id).all()
+    for box in boxes:
+        notes_count = db.query(ServiceNote).filter(ServiceNote.box_id == box.id).count()
+        if notes_count > 0:
+            msg = f"Нельзя удалить склад: ящик {box.box_number} используется в {notes_count} служебных записках."
+            return RedirectResponse(url="/warehouses?error=" + quote(msg), status_code=303)
+    
     db.delete(warehouse)
     db.commit()
-    return RedirectResponse(url="/warehouses", status_code=303)
+    return RedirectResponse(url="/warehouses?success=" + quote("Склад удален"), status_code=303)
 
 
 @app.get("/boxes/{box_id}")
@@ -269,12 +309,19 @@ async def edit_box(
 
 @app.post("/boxes/{box_id}/delete")
 async def delete_box(box_id: int, db: Session = Depends(get_db)):
+    from urllib.parse import quote
     box = db.query(Box).filter(Box.id == box_id).first()
     if not box:
-        raise HTTPException(status_code=404, detail="Ящик не найден")
+        return RedirectResponse(url="/warehouses?error=" + quote("Ящик не найден"), status_code=303)
+    
+    notes_count = db.query(ServiceNote).filter(ServiceNote.box_id == box_id).count()
+    if notes_count > 0:
+        msg = f"Нельзя удалить ящик: используется в {notes_count} служебных записках. Сначала удалите их."
+        return RedirectResponse(url="/warehouses?error=" + quote(msg), status_code=303)
+    
     db.delete(box)
     db.commit()
-    return RedirectResponse(url="/warehouses", status_code=303)
+    return RedirectResponse(url="/warehouses?success=" + quote("Ящик удален"), status_code=303)
 
 
 @app.get("/departments", response_class=HTMLResponse)
@@ -335,12 +382,19 @@ async def edit_department(
 
 @app.post("/departments/{department_id}/delete")
 async def delete_department(department_id: int, db: Session = Depends(get_db)):
+    from urllib.parse import quote
     department = db.query(Department).filter(Department.id == department_id).first()
     if not department:
-        raise HTTPException(status_code=404, detail="Отдел не найден")
+        return RedirectResponse(url="/departments?error=" + quote("Отдел не найден"), status_code=303)
+    
+    employees_count = db.query(Employee).filter(Employee.department_id == department_id).count()
+    if employees_count > 0:
+        msg = f"Нельзя удалить отдел: в нём {employees_count} сотрудник(ов). Сначала переведите их в другой отдел."
+        return RedirectResponse(url="/departments?error=" + quote(msg), status_code=303)
+    
     db.delete(department)
     db.commit()
-    return RedirectResponse(url="/departments", status_code=303)
+    return RedirectResponse(url="/departments?success=" + quote("Отдел удален"), status_code=303)
 
 
 @app.get("/employees", response_class=HTMLResponse)
@@ -411,18 +465,30 @@ async def edit_employee(
 
 @app.post("/employees/{employee_id}/delete")
 async def delete_employee(employee_id: int, db: Session = Depends(get_db)):
+    from urllib.parse import quote
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
-        raise HTTPException(status_code=404, detail="Сотрудник не найден")
+        return RedirectResponse(url="/employees?error=" + quote("Сотрудник не найден"), status_code=303)
+    
+    notes_count = db.query(ServiceNote).filter(
+        (ServiceNote.author_id == employee_id) | (ServiceNote.recipient_id == employee_id)
+    ).count()
+    if notes_count > 0:
+        msg = f"Нельзя удалить сотрудника: участвует в {notes_count} служебных записках. Сначала удалите их."
+        return RedirectResponse(url="/employees?error=" + quote(msg), status_code=303)
+    
+    db.query(CartridgeLocation).filter(CartridgeLocation.employee_id == employee_id).update({"employee_id": None})
+    
     db.delete(employee)
     db.commit()
-    return RedirectResponse(url="/employees", status_code=303)
+    return RedirectResponse(url="/employees?success=" + quote("Сотрудник удален"), status_code=303)
 
 
 @app.get("/service-notes", response_class=HTMLResponse)
 async def service_notes_page(request: Request, db: Session = Depends(get_db)):
     notes = db.query(ServiceNote).order_by(ServiceNote.created_date.desc()).all()
     employees = db.query(Employee).all()
+    departments = db.query(Department).all()
     cartridges = db.query(Cartridge).all()
     boxes = db.query(Box).filter(Box.current_count > 0).all()
     locations = db.query(CartridgeLocation).filter(
@@ -434,6 +500,7 @@ async def service_notes_page(request: Request, db: Session = Depends(get_db)):
         "request": request, 
         "notes": notes,
         "employees": employees,
+        "departments": departments,
         "cartridges": cartridges,
         "boxes": boxes,
         "locations": locations
@@ -442,29 +509,34 @@ async def service_notes_page(request: Request, db: Session = Depends(get_db)):
 
 @app.post("/service-notes")
 async def create_service_note(
-    author_id: int = Form(...),
     recipient_id: int = Form(...),
     cartridge_id: int = Form(...),
     quantity: int = Form(1),
-    box_id: int = Form(...),
     reason: str = Form(...),
     comment: str = Form(None),
     db: Session = Depends(get_db)
 ):
+    from urllib.parse import quote
+    
     location = db.query(CartridgeLocation).filter(
         CartridgeLocation.cartridge_id == cartridge_id,
-        CartridgeLocation.box_id == box_id,
-        CartridgeLocation.status == "на складе"
-    ).first()
+        CartridgeLocation.status == "на складе",
+        CartridgeLocation.quantity >= quantity
+    ).order_by(CartridgeLocation.quantity.desc()).first()
     
-    if not location or location.quantity < quantity:
-        raise HTTPException(status_code=400, detail="Недостаточно картриджей на складе")
+    if not location:
+        return RedirectResponse(url="/service-notes?error=" + quote("Недостаточно картриджей на складе"), status_code=303)
+    
+    cartridge = db.query(Cartridge).filter(Cartridge.id == cartridge_id).first()
+    if not cartridge or (cartridge.total_quantity or 0) < quantity:
+        return RedirectResponse(url="/service-notes?error=" + quote("Недостаточно картриджей"), status_code=303)
     
     note_number = generate_note_number(db)
+    box_id = location.box_id
     
     note = ServiceNote(
         note_number=note_number,
-        author_id=author_id,
+        author_id=None,
         recipient_id=recipient_id,
         cartridge_id=cartridge_id,
         quantity=quantity,
@@ -479,12 +551,13 @@ async def create_service_note(
     if location.quantity <= 0:
         location.status = "выдано"
     
+    cartridge.total_quantity = max(0, (cartridge.total_quantity or 0) - quantity)
+    
     box = db.query(Box).filter(Box.id == box_id).first()
     if box:
         box.current_count = max(0, box.current_count - quantity)
     
     recipient = db.query(Employee).filter(Employee.id == recipient_id).first()
-    cartridge = db.query(Cartridge).filter(Cartridge.id == cartridge_id).first()
     
     movement = CartridgeMovement(
         cartridge_id=cartridge_id,
@@ -495,7 +568,7 @@ async def create_service_note(
     db.add(movement)
     
     db.commit()
-    return RedirectResponse(url="/service-notes", status_code=303)
+    return RedirectResponse(url="/service-notes?success=" + quote(f"Служебка {note_number} создана"), status_code=303)
 
 
 @app.post("/service-notes/{note_id}/return")
@@ -546,6 +619,28 @@ async def add_cartridge_to_stock(
     quantity: int = Form(1),
     db: Session = Depends(get_db)
 ):
+    from urllib.parse import quote
+    
+    cartridge = db.query(Cartridge).filter(Cartridge.id == cartridge_id).first()
+    if not cartridge:
+        return RedirectResponse(url="/warehouses?error=" + quote("Картридж не найден"), status_code=303)
+    
+    current_distributed = sum(loc.quantity for loc in cartridge.locations if loc.quantity)
+    available = (cartridge.total_quantity or 0) - current_distributed
+    
+    if quantity > available:
+        msg = f"Нельзя добавить {quantity} шт.: доступно только {available} шт. (всего {cartridge.total_quantity}, распределено {current_distributed})"
+        return RedirectResponse(url="/warehouses?error=" + quote(msg), status_code=303)
+    
+    box = db.query(Box).filter(Box.id == box_id).first()
+    if not box:
+        return RedirectResponse(url="/warehouses?error=" + quote("Ящик не найден"), status_code=303)
+    
+    free_space = box.capacity - (box.current_count or 0)
+    if quantity > free_space:
+        msg = f"Нельзя добавить {quantity} шт. в ящик {box.box_number}: свободно только {free_space} мест (вместимость {box.capacity}, занято {box.current_count})"
+        return RedirectResponse(url="/warehouses?error=" + quote(msg), status_code=303)
+    
     location = db.query(CartridgeLocation).filter(
         CartridgeLocation.cartridge_id == cartridge_id,
         CartridgeLocation.box_id == box_id,
@@ -563,9 +658,7 @@ async def add_cartridge_to_stock(
         )
         db.add(location)
     
-    box = db.query(Box).filter(Box.id == box_id).first()
-    if box:
-        box.current_count += quantity
+    box.current_count += quantity
     
     movement = CartridgeMovement(
         cartridge_id=cartridge_id,
@@ -575,7 +668,37 @@ async def add_cartridge_to_stock(
     db.add(movement)
     
     db.commit()
-    return RedirectResponse(url="/warehouses", status_code=303)
+    return RedirectResponse(url="/warehouses?success=" + quote(f"Добавлено {quantity} шт."), status_code=303)
+
+
+@app.post("/locations/{location_id}/remove-one")
+async def remove_one_from_location(location_id: int, db: Session = Depends(get_db)):
+    from urllib.parse import quote
+    
+    location = db.query(CartridgeLocation).filter(CartridgeLocation.id == location_id).first()
+    if not location:
+        return RedirectResponse(url="/warehouses?error=" + quote("Запись не найдена"), status_code=303)
+    
+    box = db.query(Box).filter(Box.id == location.box_id).first()
+    cartridge = location.cartridge
+    
+    if location.quantity <= 1:
+        db.delete(location)
+    else:
+        location.quantity -= 1
+    
+    if box and box.current_count > 0:
+        box.current_count -= 1
+    
+    movement = CartridgeMovement(
+        cartridge_id=location.cartridge_id,
+        from_location=f"Ящик {box.box_number}" if box else "Склад",
+        to_location="Нераспределённые"
+    )
+    db.add(movement)
+    
+    db.commit()
+    return RedirectResponse(url="/warehouses?success=" + quote(f"Убран 1 шт. {cartridge.article} в нераспределённые"), status_code=303)
 
 
 @app.get("/reports", response_class=HTMLResponse)

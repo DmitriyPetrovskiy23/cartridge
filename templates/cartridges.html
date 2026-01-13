@@ -21,7 +21,8 @@
                     <th>Тип принтера</th>
                     <th>Цвет</th>
                     <th>Статус</th>
-                    <th>Емкость</th>
+                    <th>Изначально</th>
+                    <th>Текущее</th>
                     <th>Действия</th>
                 </tr>
             </thead>
@@ -53,7 +54,16 @@
                         <span class="badge bg-secondary">{{ cartridge.status }}</span>
                         {% endif %}
                     </td>
-                    <td>{{ cartridge.capacity or '-' }} стр.</td>
+                    <td>{{ cartridge.initial_quantity or 0 }} шт.</td>
+                    <td>
+                        {% if cartridge.total_quantity == 0 %}
+                        <span class="badge bg-danger">0 шт.</span>
+                        {% elif cartridge.total_quantity < 5 %}
+                        <span class="badge bg-warning text-dark">{{ cartridge.total_quantity }} шт.</span>
+                        {% else %}
+                        <span class="badge bg-success">{{ cartridge.total_quantity }} шт.</span>
+                        {% endif %}
+                    </td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary" onclick="editCartridge({{ cartridge.id }})" title="Редактировать">
                             <i class="bi bi-pencil"></i>
@@ -122,8 +132,8 @@
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Емкость (стр.)</label>
-                            <input type="number" name="capacity" class="form-control">
+                            <label class="form-label">Начальное кол-во *</label>
+                            <input type="number" name="initial_quantity" class="form-control" value="0" min="0" required>
                         </div>
                     </div>
                 </div>
@@ -184,8 +194,9 @@
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Емкость (стр.)</label>
-                            <input type="number" name="capacity" id="edit_capacity" class="form-control">
+                            <label class="form-label">Добавить кол-во</label>
+                            <input type="number" name="add_quantity" id="edit_add_quantity" class="form-control" value="0" min="0">
+                            <small class="text-muted">Увеличит изначальное и текущее</small>
                         </div>
                     </div>
                 </div>
@@ -207,7 +218,7 @@ async function editCartridge(id) {
     document.getElementById('edit_printer_type').value = data.printer_type || '';
     document.getElementById('edit_color').value = data.color || '';
     document.getElementById('edit_status').value = data.status || 'новый';
-    document.getElementById('edit_capacity').value = data.capacity || '';
+    document.getElementById('edit_add_quantity').value = 0;
     document.getElementById('editForm').action = `/cartridges/${id}/edit`;
     new bootstrap.Modal(document.getElementById('editModal')).show();
 }

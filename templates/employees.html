@@ -19,9 +19,7 @@
                     <th>ФИО</th>
                     <th>Должность</th>
                     <th>Отдел</th>
-                    <th>Табельный номер</th>
                     <th>Телефон</th>
-                    <th>Email</th>
                     <th>Действия</th>
                 </tr>
             </thead>
@@ -31,9 +29,7 @@
                     <td><strong>{{ emp.full_name }}</strong></td>
                     <td>{{ emp.position or '-' }}</td>
                     <td>{{ emp.department.name if emp.department else '-' }}</td>
-                    <td>{{ emp.personnel_number or '-' }}</td>
                     <td>{{ emp.phone or '-' }}</td>
-                    <td>{{ emp.email or '-' }}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary" onclick="editEmployee({{ emp.id }})" title="Редактировать">
                             <i class="bi bi-pencil"></i>
@@ -81,18 +77,8 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Табельный номер</label>
-                        <input type="text" name="personnel_number" class="form-control">
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Телефон</label>
-                            <input type="text" name="phone" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" name="email" class="form-control">
-                        </div>
+                        <label class="form-label">Телефон</label>
+                        <input type="text" name="phone" class="form-control">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -131,18 +117,8 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Табельный номер</label>
-                        <input type="text" name="personnel_number" id="edit_personnel_number" class="form-control">
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Телефон</label>
-                            <input type="text" name="phone" id="edit_phone" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" name="email" id="edit_email" class="form-control">
-                        </div>
+                        <label class="form-label">Телефон</label>
+                        <input type="text" name="phone" id="edit_phone" class="form-control">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -161,9 +137,7 @@ async function editEmployee(id) {
     document.getElementById('edit_full_name').value = data.full_name || '';
     document.getElementById('edit_position').value = data.position || '';
     document.getElementById('edit_department_id').value = data.department_id || '';
-    document.getElementById('edit_personnel_number').value = data.personnel_number || '';
     document.getElementById('edit_phone').value = data.phone || '';
-    document.getElementById('edit_email').value = data.email || '';
     document.getElementById('editForm').action = `/employees/${id}/edit`;
     new bootstrap.Modal(document.getElementById('editModal')).show();
 }

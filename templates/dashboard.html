@@ -6,7 +6,7 @@
 <h2 class="mb-4"><i class="bi bi-speedometer2"></i> Панель управления</h2>
 
 <div class="row mb-4">
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card card-stat primary">
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">На складе</h6>
@@ -15,16 +15,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card card-stat success">
-            <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">В использовании</h6>
-                <h2 class="card-title text-success">{{ in_use }}</h2>
-                <p class="card-text small">картриджей</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card card-stat warning">
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Мало остатков</h6>
@@ -33,7 +24,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card card-stat danger">
             <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">Служебок сегодня</h6>
@@ -57,7 +48,7 @@
                         <tr>
                             <th>Номер</th>
                             <th>Дата</th>
-                            <th>Статус</th>
+                            <th>Отдел</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -65,15 +56,7 @@
                         <tr>
                             <td>{{ note.note_number }}</td>
                             <td>{{ note.created_date.strftime('%d.%m.%Y') }}</td>
-                            <td>
-                                {% if note.status == 'выдано' %}
-                                <span class="badge bg-success">{{ note.status }}</span>
-                                {% elif note.status == 'возврат' %}
-                                <span class="badge bg-info">{{ note.status }}</span>
-                                {% else %}
-                                <span class="badge bg-secondary">{{ note.status }}</span>
-                                {% endif %}
-                            </td>
+                            <td>{{ note.recipient.department.name if note.recipient and note.recipient.department else '-' }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

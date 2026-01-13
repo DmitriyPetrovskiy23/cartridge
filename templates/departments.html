@@ -19,7 +19,6 @@
                     <th>Название</th>
                     <th>Руководитель</th>
                     <th>Телефон</th>
-                    <th>Сотрудников</th>
                     <th>Действия</th>
                 </tr>
             </thead>
@@ -29,7 +28,6 @@
                     <td><strong>{{ dept.name }}</strong></td>
                     <td>{{ dept.manager or '-' }}</td>
                     <td>{{ dept.phone or '-' }}</td>
-                    <td>{{ dept.employee_count }}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary" onclick="editDepartment({{ dept.id }})" title="Редактировать">
                             <i class="bi bi-pencil"></i>
@@ -71,10 +69,6 @@
                         <label class="form-label">Телефон</label>
                         <input type="text" name="phone" class="form-control">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Количество сотрудников</label>
-                        <input type="number" name="employee_count" class="form-control" value="0">
-                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -106,10 +100,6 @@
                         <label class="form-label">Телефон</label>
                         <input type="text" name="phone" id="edit_phone" class="form-control">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Количество сотрудников</label>
-                        <input type="number" name="employee_count" id="edit_employee_count" class="form-control" value="0">
-                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -127,7 +117,6 @@ async function editDepartment(id) {
     document.getElementById('edit_name').value = data.name || '';
     document.getElementById('edit_manager').value = data.manager || '';
     document.getElementById('edit_phone').value = data.phone || '';
-    document.getElementById('edit_employee_count').value = data.employee_count || 0;
     document.getElementById('editForm').action = `/departments/${id}/edit`;
     new bootstrap.Modal(document.getElementById('editModal')).show();
 }

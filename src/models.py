@@ -40,10 +40,14 @@ class Cartridge(Base):
     color = Column(String(30))
     status = Column(String(30), default="новый")
     capacity = Column(Integer)
+    initial_quantity = Column(Integer, default=0)
+    total_quantity = Column(Integer, default=0)
     production_date = Column(Date)
     warranty_months = Column(Integer, default=12)
     
-    locations = relationship("CartridgeLocation", back_populates="cartridge")
+    locations = relationship("CartridgeLocation", back_populates="cartridge", cascade="all, delete-orphan")
+    service_notes = relationship("ServiceNote", back_populates="cartridge")
+    movements = relationship("CartridgeMovement", back_populates="cartridge")
 
 
 class Warehouse(Base):
@@ -104,7 +108,7 @@ class ServiceNote(Base):
     
     author = relationship("Employee", foreign_keys=[author_id])
     recipient = relationship("Employee", foreign_keys=[recipient_id])
-    cartridge = relationship("Cartridge")
+    cartridge = relationship("Cartridge", back_populates="service_notes")
     box = relationship("Box")
 
 
@@ -118,5 +122,5 @@ class CartridgeMovement(Base):
     movement_date = Column(DateTime, default=datetime.utcnow)
     service_note_id = Column(Integer, ForeignKey("service_notes.id"), nullable=True)
     
-    cartridge = relationship("Cartridge")
+    cartridge = relationship("Cartridge", back_populates="movements")
     service_note = relationship("ServiceNote")
