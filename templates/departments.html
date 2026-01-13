@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Отделы - Учет картриджей{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-diagram-3"></i> Отделы</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
+        <i class="bi bi-plus"></i> Добавить отдел
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if departments %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Руководитель</th>
+                    <th>Телефон</th>
+                    <th>Сотрудников</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dept in departments %}
+                <tr>
+                    <td><strong>{{ dept.name }}</strong></td>
+                    <td>{{ dept.manager or '-' }}</td>
+                    <td>{{ dept.phone or '-' }}</td>
+                    <td>{{ dept.employee_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted text-center py-5">Нет отделов. Добавьте первый!</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/departments">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить отдел</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название *</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Руководитель</label>
+                        <input type="text" name="manager" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Телефон</label>
+                        <input type="text" name="phone" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Количество сотрудников</label>
+                        <input type="number" name="employee_count" class="form-control" value="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

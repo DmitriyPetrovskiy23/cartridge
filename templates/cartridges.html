@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Картриджи - Учет картриджей{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-box-seam"></i> Картриджи</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
+        <i class="bi bi-plus"></i> Добавить картридж
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if cartridges %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Артикул</th>
+                    <th>Модель</th>
+                    <th>Тип принтера</th>
+                    <th>Цвет</th>
+                    <th>Статус</th>
+                    <th>Емкость</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cartridge in cartridges %}
+                <tr>
+                    <td><strong>{{ cartridge.article }}</strong></td>
+                    <td>{{ cartridge.model }}</td>
+                    <td>{{ cartridge.printer_type or '-' }}</td>
+                    <td>
+                        {% if cartridge.color == 'черный' %}
+                        <span class="badge bg-dark">{{ cartridge.color }}</span>
+                        {% elif cartridge.color == 'цветной' %}
+                        <span class="badge bg-info">{{ cartridge.color }}</span>
+                        {% else %}
+                        {{ cartridge.color or '-' }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if cartridge.status == 'новый' %}
+                        <span class="badge bg-success">{{ cartridge.status }}</span>
+                        {% elif cartridge.status == 'заправлен' %}
+                        <span class="badge bg-info">{{ cartridge.status }}</span>
+                        {% elif cartridge.status == 'использованный' %}
+                        <span class="badge bg-warning">{{ cartridge.status }}</span>
+                        {% elif cartridge.status == 'списанный' %}
+                        <span class="badge bg-danger">{{ cartridge.status }}</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ cartridge.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ cartridge.capacity or '-' }} стр.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted text-center py-5">Нет картриджей. Добавьте первый!</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/cartridges">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить картридж</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Артикул *</label>
+                        <input type="text" name="article" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Модель *</label>
+                        <input type="text" name="model" class="form-control" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Тип принтера</label>
+                            <select name="printer_type" class="form-select">
+                                <option value="">Выберите</option>
+                                <option value="лазерный">Лазерный</option>
+                                <option value="струйный">Струйный</option>
+                                <option value="МФУ">МФУ</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Цвет</label>
+                            <select name="color" class="form-select">
+                                <option value="">Выберите</option>
+                                <option value="черный">Черный</option>
+                                <option value="цветной">Цветной</option>
+                                <option value="CMYK">CMYK</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Статус</label>
+                            <select name="status" class="form-select">
+                                <option value="новый">Новый</option>
+                                <option value="заправлен">Заправлен</option>
+                                <option value="использованный">Использованный</option>
+                                <option value="списанный">Списанный</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Емкость (стр.)</label>
+                            <input type="number" name="capacity" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
