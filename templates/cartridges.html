@@ -22,6 +22,7 @@
                     <th>Цвет</th>
                     <th>Статус</th>
                     <th>Емкость</th>
+                    <th>Действия</th>
                 </tr>
             </thead>
             <tbody>
@@ -53,6 +54,16 @@
                         {% endif %}
                     </td>
                     <td>{{ cartridge.capacity or '-' }} стр.</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editCartridge({{ cartridge.id }})" title="Редактировать">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <form method="POST" action="/cartridges/{{ cartridge.id }}/delete" style="display: inline;" onsubmit="return confirm('Удалить картридж?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -124,4 +135,81 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Редактировать картридж</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Артикул *</label>
+                        <input type="text" name="article" id="edit_article" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Модель *</label>
+                        <input type="text" name="model" id="edit_model" class="form-control" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Тип принтера</label>
+                            <select name="printer_type" id="edit_printer_type" class="form-select">
+                                <option value="">Выберите</option>
+                                <option value="лазерный">Лазерный</option>
+                                <option value="струйный">Струйный</option>
+                                <option value="МФУ">МФУ</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Цвет</label>
+                            <select name="color" id="edit_color" class="form-select">
+                                <option value="">Выберите</option>
+                                <option value="черный">Черный</option>
+                                <option value="цветной">Цветной</option>
+                                <option value="CMYK">CMYK</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Статус</label>
+                            <select name="status" id="edit_status" class="form-select">
+                                <option value="новый">Новый</option>
+                                <option value="заправлен">Заправлен</option>
+                                <option value="использованный">Использованный</option>
+                                <option value="списанный">Списанный</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Емкость (стр.)</label>
+                            <input type="number" name="capacity" id="edit_capacity" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+async function editCartridge(id) {
+    const response = await fetch(`/cartridges/${id}`);
+    const data = await response.json();
+    document.getElementById('edit_article').value = data.article || '';
+    document.getElementById('edit_model').value = data.model || '';
+    document.getElementById('edit_printer_type').value = data.printer_type || '';
+    document.getElementById('edit_color').value = data.color || '';
+    document.getElementById('edit_status').value = data.status || 'новый';
+    document.getElementById('edit_capacity').value = data.capacity || '';
+    document.getElementById('editForm').action = `/cartridges/${id}/edit`;
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+</script>
 {% endblock %}

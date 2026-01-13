@@ -104,6 +104,56 @@ async def create_cartridge(
     return RedirectResponse(url="/cartridges", status_code=303)
 
 
+@app.get("/cartridges/{cartridge_id}")
+async def get_cartridge(cartridge_id: int, db: Session = Depends(get_db)):
+    cartridge = db.query(Cartridge).filter(Cartridge.id == cartridge_id).first()
+    if not cartridge:
+        raise HTTPException(status_code=404, detail="Картридж не найден")
+    return {
+        "id": cartridge.id,
+        "article": cartridge.article,
+        "model": cartridge.model,
+        "printer_type": cartridge.printer_type,
+        "color": cartridge.color,
+        "status": cartridge.status,
+        "capacity": cartridge.capacity
+    }
+
+
+@app.post("/cartridges/{cartridge_id}/edit")
+async def edit_cartridge(
+    cartridge_id: int,
+    article: str = Form(...),
+    model: str = Form(...),
+    printer_type: str = Form(""),
+    color: str = Form(""),
+    status: str = Form("новый"),
+    capacity: str = Form(""),
+    db: Session = Depends(get_db)
+):
+    cartridge = db.query(Cartridge).filter(Cartridge.id == cartridge_id).first()
+    if not cartridge:
+        raise HTTPException(status_code=404, detail="Картридж не найден")
+    cartridge.article = article
+    cartridge.model = model
+    cartridge.printer_type = printer_type if printer_type else None
+    cartridge.color = color if color else None
+    cartridge.status = status
+    cartridge.capacity = int(capacity) if capacity else None
+    db.commit()
+    return RedirectResponse(url="/cartridges", status_code=303)
+
+
+@app.post("/cartridges/{cartridge_id}/delete")
+async def delete_cartridge(cartridge_id: int, db: Session = Depends(get_db)):
+    cartridge = db.query(Cartridge).filter(Cartridge.id == cartridge_id).first()
+    if not cartridge:
+        raise HTTPException(status_code=404, detail="Картридж не найден")
+    db.delete(cartridge)
+    db.commit()
+    return RedirectResponse(url="/cartridges", status_code=303)
+
+
 @app.get("/warehouses", response_class=HTMLResponse)
 async def warehouses_page(request: Request, db: Session = Depends(get_db)):
     warehouses = db.query(Warehouse).all()
@@ -153,6 +203,80 @@ async def create_box(
     return RedirectResponse(url="/warehouses", status_code=303)
 
 
+@app.get("/warehouses/{warehouse_id}")
+async def get_warehouse(warehouse_id: int, db: Session = Depends(get_db)):
+    warehouse = db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()
+    if not warehouse:
+        raise HTTPException(status_code=404, detail="Склад не найден")
+    return {"id": warehouse.id, "name": warehouse.name, "location": warehouse.location, "description": warehouse.description}
+
+
+@app.post("/warehouses/{warehouse_id}/edit")
+async def edit_warehouse(
+    warehouse_id: int,
+    name: str = Form(...),
+    location: str = Form(None),
+    description: str = Form(None),
+    db: Session = Depends(get_db)
+):
+    warehouse = db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()
+    if not warehouse:
+        raise HTTPException(status_code=404, detail="Склад не найден")
+    warehouse.name = name
+    warehouse.location = location
+    warehouse.description = description
+    db.commit()
+    return RedirectResponse(url="/warehouses", status_code=303)
+
+
+@app.post("/warehouses/{warehouse_id}/delete")
+async def delete_warehouse(warehouse_id: int, db: Session = Depends(get_db)):
+    warehouse = db.query(Warehouse).filter(Warehouse.id == warehouse_id).first()
+    if not warehouse:
+        raise HTTPException(status_code=404, detail="Склад не найден")
+    db.delete(warehouse)
+    db.commit()
+    return RedirectResponse(url="/warehouses", status_code=303)
+
+
+@app.get("/boxes/{box_id}")
+async def get_box(box_id: int, db: Session = Depends(get_db)):
+    box = db.query(Box).filter(Box.id == box_id).first()
+    if not box:
+        raise HTTPException(status_code=404, detail="Ящик не найден")
+    return {"id": box.id, "warehouse_id": box.warehouse_id, "box_number": box.box_number, "description": box.description, "capacity": box.capacity}
+
+
+@app.post("/boxes/{box_id}/edit")
+async def edit_box(
+    box_id: int,
+    warehouse_id: str = Form(...),
+    box_number: str = Form(...),
+    description: str = Form(""),
+    capacity: str = Form("10"),
+    db: Session = Depends(get_db)
+):
+    box = db.query(Box).filter(Box.id == box_id).first()
+    if not box:
+        raise HTTPException(status_code=404, detail="Ящик не найден")
+    box.warehouse_id = int(warehouse_id) if warehouse_id else box.warehouse_id
+    box.box_number = box_number
+    box.description = description if description else None
+    box.capacity = int(capacity) if capacity else 10
+    db.commit()
+    return RedirectResponse(url="/warehouses", status_code=303)
+
+
+@app.post("/boxes/{box_id}/delete")
+async def delete_box(box_id: int, db: Session = Depends(get_db)):
+    box = db.query(Box).filter(Box.id == box_id).first()
+    if not box:
+        raise HTTPException(status_code=404, detail="Ящик не найден")
+    db.delete(box)
+    db.commit()
+    return RedirectResponse(url="/warehouses", status_code=303)
+
+
 @app.get("/departments", response_class=HTMLResponse)
 async def departments_page(request: Request, db: Session = Depends(get_db)):
     departments = db.query(Department).all()
@@ -177,6 +301,44 @@ async def create_department(
         employee_count=employee_count
     )
     db.add(department)
+    db.commit()
+    return RedirectResponse(url="/departments", status_code=303)
+
+
+@app.get("/departments/{department_id}")
+async def get_department(department_id: int, db: Session = Depends(get_db)):
+    department = db.query(Department).filter(Department.id == department_id).first()
+    if not department:
+        raise HTTPException(status_code=404, detail="Отдел не найден")
+    return {"id": department.id, "name": department.name, "manager": department.manager, "phone": department.phone, "employee_count": department.employee_count}
+
+
+@app.post("/departments/{department_id}/edit")
+async def edit_department(
+    department_id: int,
+    name: str = Form(...),
+    manager: str = Form(""),
+    phone: str = Form(""),
+    employee_count: str = Form("0"),
+    db: Session = Depends(get_db)
+):
+    department = db.query(Department).filter(Department.id == department_id).first()
+    if not department:
+        raise HTTPException(status_code=404, detail="Отдел не найден")
+    department.name = name
+    department.manager = manager if manager else None
+    department.phone = phone if phone else None
+    department.employee_count = int(employee_count) if employee_count else 0
+    db.commit()
+    return RedirectResponse(url="/departments", status_code=303)
+
+
+@app.post("/departments/{department_id}/delete")
+async def delete_department(department_id: int, db: Session = Depends(get_db)):
+    department = db.query(Department).filter(Department.id == department_id).first()
+    if not department:
+        raise HTTPException(status_code=404, detail="Отдел не найден")
+    db.delete(department)
     db.commit()
     return RedirectResponse(url="/departments", status_code=303)
 
@@ -211,6 +373,48 @@ async def create_employee(
         email=email
     )
     db.add(employee)
+    db.commit()
+    return RedirectResponse(url="/employees", status_code=303)
+
+
+@app.get("/employees/{employee_id}")
+async def get_employee(employee_id: int, db: Session = Depends(get_db)):
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Сотрудник не найден")
+    return {"id": employee.id, "full_name": employee.full_name, "position": employee.position, "department_id": employee.department_id, "personnel_number": employee.personnel_number, "phone": employee.phone, "email": employee.email}
+
+
+@app.post("/employees/{employee_id}/edit")
+async def edit_employee(
+    employee_id: int,
+    full_name: str = Form(...),
+    position: str = Form(""),
+    department_id: str = Form(""),
+    personnel_number: str = Form(""),
+    phone: str = Form(""),
+    email: str = Form(""),
+    db: Session = Depends(get_db)
+):
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Сотрудник не найден")
+    employee.full_name = full_name
+    employee.position = position if position else None
+    employee.department_id = int(department_id) if department_id else None
+    employee.personnel_number = personnel_number if personnel_number else None
+    employee.phone = phone if phone else None
+    employee.email = email if email else None
+    db.commit()
+    return RedirectResponse(url="/employees", status_code=303)
+
+
+@app.post("/employees/{employee_id}/delete")
+async def delete_employee(employee_id: int, db: Session = Depends(get_db)):
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Сотрудник не найден")
+    db.delete(employee)
     db.commit()
     return RedirectResponse(url="/employees", status_code=303)
 

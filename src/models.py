@@ -13,7 +13,7 @@ class Department(Base):
     phone = Column(String(20))
     employee_count = Column(Integer, default=0)
     
-    employees = relationship("Employee", back_populates="department")
+    employees = relationship("Employee", back_populates="department", cascade="all, delete-orphan")
 
 
 class Employee(Base):
@@ -54,7 +54,7 @@ class Warehouse(Base):
     location = Column(String(200))
     description = Column(Text)
     
-    boxes = relationship("Box", back_populates="warehouse")
+    boxes = relationship("Box", back_populates="warehouse", cascade="all, delete-orphan")
 
 
 class Box(Base):
@@ -68,7 +68,7 @@ class Box(Base):
     current_count = Column(Integer, default=0)
     
     warehouse = relationship("Warehouse", back_populates="boxes")
-    locations = relationship("CartridgeLocation", back_populates="box")
+    locations = relationship("CartridgeLocation", back_populates="box", cascade="all, delete-orphan")
 
 
 class CartridgeLocation(Base):

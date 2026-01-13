@@ -20,6 +20,7 @@
                     <th>Руководитель</th>
                     <th>Телефон</th>
                     <th>Сотрудников</th>
+                    <th>Действия</th>
                 </tr>
             </thead>
             <tbody>
@@ -29,6 +30,16 @@
                     <td>{{ dept.manager or '-' }}</td>
                     <td>{{ dept.phone or '-' }}</td>
                     <td>{{ dept.employee_count }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editDepartment({{ dept.id }})" title="Редактировать">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <form method="POST" action="/departments/{{ dept.id }}/delete" style="display: inline;" onsubmit="return confirm('Удалить отдел?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -73,4 +84,52 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Редактировать отдел</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название *</label>
+                        <input type="text" name="name" id="edit_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Руководитель</label>
+                        <input type="text" name="manager" id="edit_manager" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Телефон</label>
+                        <input type="text" name="phone" id="edit_phone" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Количество сотрудников</label>
+                        <input type="number" name="employee_count" id="edit_employee_count" class="form-control" value="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+async function editDepartment(id) {
+    const response = await fetch(`/departments/${id}`);
+    const data = await response.json();
+    document.getElementById('edit_name').value = data.name || '';
+    document.getElementById('edit_manager').value = data.manager || '';
+    document.getElementById('edit_phone').value = data.phone || '';
+    document.getElementById('edit_employee_count').value = data.employee_count || 0;
+    document.getElementById('editForm').action = `/departments/${id}/edit`;
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+</script>
 {% endblock %}
