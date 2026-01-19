@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}Склад - Учет картриджей{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-building"></i> Склад</h2>
+    <div>
+        <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addWarehouseModal">
+            <i class="bi bi-plus"></i> Добавить склад
+        </button>
+        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addBoxModal">
+            <i class="bi bi-plus-square"></i> Добавить ящик
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">Склады и ящики</div>
+            <div class="card-body">
+                {% if warehouses %}
+                {% for warehouse in warehouses %}
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5><i class="bi bi-building"></i> {{ warehouse.name }}</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editWarehouse({{ warehouse.id }})" title="Редактировать">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <form method="POST" action="/warehouses/{{ warehouse.id }}/delete" style="display: inline;" onsubmit="return confirm('Удалить склад и все ящики?')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <p class="text-muted small">{{ warehouse.location or '' }} {{ warehouse.description or '' }}</p>
+                    
+                    <div class="row">
+                        {% for box in boxes if box.warehouse_id == warehouse.id %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card {% if box.current_count < 3 %}border-warning{% endif %}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <h6 class="card-title">
+                                            <i class="bi bi-box"></i> {{ box.box_number }}
+                                        </h6>
+                                        <div>
+                                            <button class="btn btn-sm btn-outline-primary p-0 px-1" onclick="editBox({{ box.id }})" title="Редактировать">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <form method="POST" action="/boxes/{{ box.id }}/delete" style="display: inline;" onsubmit="return confirm('Удалить ящик?')">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger p-0 px-1" title="Удалить">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    <p class="card-text small text-muted">{{ box.description or 'Без описания' }}</p>
+                                    
+                                    {% set box_locations = [] %}
+                                    {% for loc in locations if loc.box_id == box.id and loc.quantity > 0 %}
+                                    {% set _ = box_locations.append(loc) %}
+                                    {% endfor %}
+                                    
+                                    {% if box_locations %}
+                                    <div class="mt-4 mb-3 pt-3 border-top">
+                                        <small class="text-muted fw-bold">Содержимое:</small>
+                                        <ul class="list-unstyled mb-0 small mt-3">
+                                            {% for loc in locations if loc.box_id == box.id and loc.quantity > 0 %}
+                                            <li class="d-flex justify-content-between align-items-center py-1">
+                                                <span>{{ loc.cartridge.article }}</span>
+                                                <div>
+                                                    <span class="badge bg-secondary me-1">{{ loc.quantity }} шт.</span>
+                                                    <form method="POST" action="/locations/{{ loc.id }}/remove-one" style="display: inline;" onsubmit="return confirm('Убрать 1 шт. {{ loc.cartridge.article }} из ящика?')">
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm p-0 px-1" title="Убрать 1 шт.">
+                                                            <i class="bi bi-dash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="d-flex justify-content-between">
+                                        <span>Заполнено:</span>
+                                        <strong>{{ box.current_count }} / {{ box.capacity }}</strong>
+                                    </div>
+                                    <div class="progress mt-2">
+                                        <div class="progress-bar {% if box.current_count < 3 %}bg-warning{% else %}bg-success{% endif %}" 
+                                             style="width: {{ (box.current_count / box.capacity * 100) if box.capacity > 0 else 0 }}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <p class="text-muted">Нет ящиков</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted text-center py-5">Нет складов. Добавьте первый!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-box-arrow-in-down"></i> Добавить картриджи на склад</div>
+            <div class="card-body">
+                {% if cartridges and boxes %}
+                <form method="POST" action="/locations">
+                    <div class="mb-3">
+                        <label class="form-label">Картридж</label>
+                        <select name="cartridge_id" class="form-select" required>
+                            <option value="">Выберите картридж</option>
+                            {% for c in cartridges %}
+                            <option value="{{ c.id }}">{{ c.article }} - {{ c.model }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ящик</label>
+                        <select name="box_id" class="form-select" required>
+                            <option value="">Выберите ящик</option>
+                            {% for b in boxes %}
+                            <option value="{{ b.id }}">{{ b.box_number }} ({{ b.current_count }}/{{ b.capacity }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Количество</label>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-plus"></i> Добавить на склад
+                    </button>
+                </form>
+                {% else %}
+                <p class="text-muted">Сначала добавьте картриджи и ящики</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header"><i class="bi bi-exclamation-triangle text-warning"></i> Нераспределённые картриджи</div>
+            <div class="card-body">
+                {% if undistributed %}
+                <ul class="list-group list-group-flush">
+                    {% for item in undistributed %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ item.cartridge.article }}</strong>
+                            <br><small class="text-muted">{{ item.cartridge.model }}</small>
+                        </div>
+                        <span class="badge bg-warning text-dark">{{ item.available }} шт.</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-success small mb-0"><i class="bi bi-check-circle"></i> Все картриджи распределены</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header"><i class="bi bi-bar-chart"></i> Статистика склада</div>
+            <div class="card-body">
+                {% set total_boxes = boxes|length %}
+                {% set total_capacity = boxes|sum(attribute='capacity') %}
+                {% set total_filled = boxes|sum(attribute='current_count') %}
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h4 class="mb-0">{{ total_boxes }}</h4>
+                        <small class="text-muted">Ящиков</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="mb-0">{{ total_filled }}</h4>
+                        <small class="text-muted">Занято</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="mb-0">{{ total_capacity - total_filled }}</h4>
+                        <small class="text-muted">Свободно</small>
+                    </div>
+                </div>
+                <div class="progress mt-3" style="height: 8px;">
+                    <div class="progress-bar bg-success" style="width: {{ (total_filled / total_capacity * 100) if total_capacity > 0 else 0 }}%"></div>
+                </div>
+                <small class="text-muted d-block text-center mt-1">Заполнено {{ total_filled }} из {{ total_capacity }}</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addWarehouseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/warehouses">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить склад</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название *</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Местоположение</label>
+                        <input type="text" name="location" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="description" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addBoxModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/boxes">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить ящик</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Склад *</label>
+                        <select name="warehouse_id" class="form-select" required>
+                            <option value="">Выберите склад</option>
+                            {% for w in warehouses %}
+                            <option value="{{ w.id }}">{{ w.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Номер ящика *</label>
+                        <input type="text" name="box_number" class="form-control" placeholder="A-01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <input type="text" name="description" class="form-control" placeholder="HP картриджи">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Вместимость</label>
+                        <input type="number" name="capacity" class="form-control" value="10">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editWarehouseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editWarehouseForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Редактировать склад</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название *</label>
+                        <input type="text" name="name" id="edit_warehouse_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Местоположение</label>
+                        <input type="text" name="location" id="edit_warehouse_location" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="description" id="edit_warehouse_description" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editBoxModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editBoxForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Редактировать ящик</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Склад *</label>
+                        <select name="warehouse_id" id="edit_box_warehouse_id" class="form-select" required>
+                            {% for w in warehouses %}
+                            <option value="{{ w.id }}">{{ w.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Номер ящика *</label>
+                        <input type="text" name="box_number" id="edit_box_number" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <input type="text" name="description" id="edit_box_description" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Вместимость</label>
+                        <input type="number" name="capacity" id="edit_box_capacity" class="form-control" value="10">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+async function editWarehouse(id) {
+    const response = await fetch(`/warehouses/${id}`);
+    const data = await response.json();
+    document.getElementById('edit_warehouse_name').value = data.name || '';
+    document.getElementById('edit_warehouse_location').value = data.location || '';
+    document.getElementById('edit_warehouse_description').value = data.description || '';
+    document.getElementById('editWarehouseForm').action = `/warehouses/${id}/edit`;
+    new bootstrap.Modal(document.getElementById('editWarehouseModal')).show();
+}
+
+async function editBox(id) {
+    const response = await fetch(`/boxes/${id}`);
+    const data = await response.json();
+    document.getElementById('edit_box_warehouse_id').value = data.warehouse_id || '';
+    document.getElementById('edit_box_number').value = data.box_number || '';
+    document.getElementById('edit_box_description').value = data.description || '';
+    document.getElementById('edit_box_capacity').value = data.capacity || 10;
+    document.getElementById('editBoxForm').action = `/boxes/${id}/edit`;
+    new bootstrap.Modal(document.getElementById('editBoxModal')).show();
+}
+</script>
+{% endblock %}
