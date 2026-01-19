@@ -1,0 +1,31 @@
+(cartridge_venv) root@root:/home/account# sudo journalctl -u cartridge -n 30 --no-pager
+янв 19 12:32:12 root uvicorn[55918]:     result = conn.execute(
+янв 19 12:32:12 root uvicorn[55918]:              ^^^^^^^^^^^^^
+янв 19 12:32:12 root uvicorn[55918]:   File "/home/account/cartridge_venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+янв 19 12:32:12 root uvicorn[55918]:     return meth(
+янв 19 12:32:12 root uvicorn[55918]:            ^^^^^
+янв 19 12:32:12 root uvicorn[55918]:   File "/home/account/cartridge_venv/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+янв 19 12:32:12 root uvicorn[55918]:     return connection._execute_clauseelement(
+янв 19 12:32:12 root uvicorn[55918]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+янв 19 12:32:12 root uvicorn[55918]:   File "/home/account/cartridge_venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+янв 19 12:32:12 root uvicorn[55918]:     ret = self._execute_context(
+янв 19 12:32:12 root uvicorn[55918]:           ^^^^^^^^^^^^^^^^^^^^^^
+янв 19 12:32:12 root uvicorn[55918]:   File "/home/account/cartridge_venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+янв 19 12:32:12 root uvicorn[55918]:     return self._exec_single_context(
+янв 19 12:32:12 root uvicorn[55918]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+янв 19 12:32:12 root uvicorn[55918]:   File "/home/account/cartridge_venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+янв 19 12:32:12 root uvicorn[55918]:     self._handle_dbapi_exception(
+янв 19 12:32:12 root uvicorn[55918]:   File "/home/account/cartridge_venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+янв 19 12:32:12 root uvicorn[55918]:     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+янв 19 12:32:12 root uvicorn[55918]:   File "/home/account/cartridge_venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+янв 19 12:32:12 root uvicorn[55918]:     self.dialect.do_execute(
+янв 19 12:32:12 root uvicorn[55918]:   File "/home/account/cartridge_venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+янв 19 12:32:12 root uvicorn[55918]:     cursor.execute(statement, parameters)
+янв 19 12:32:12 root uvicorn[55918]: sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column pending_registrations.reviewed_at does not exist
+янв 19 12:32:12 root uvicorn[55918]: LINE 1: ...s.created_at AS pending_registrations_created_at, pending_re...
+янв 19 12:32:12 root uvicorn[55918]:                                                              ^
+янв 19 12:32:12 root uvicorn[55918]: [SQL: SELECT pending_registrations.id AS pending_registrations_id, pending_registrations.email AS pending_registrations_email, pending_registrations.full_name AS pending_registrations_full_name, pending_registrations.password_hash AS pending_registrations_password_hash, pending_registrations.status AS pending_registrations_status, pending_registrations.created_at AS pending_registrations_created_at, pending_registrations.reviewed_at AS pending_registrations_reviewed_at
+янв 19 12:32:12 root uvicorn[55918]: FROM pending_registrations
+янв 19 12:32:12 root uvicorn[55918]: WHERE pending_registrations.status = %(status_1)s]
+янв 19 12:32:12 root uvicorn[55918]: [parameters: {'status_1': 'pending'}]
+янв 19 12:32:12 root uvicorn[55918]: (Background on this error at: https://sqlalche.me/e/20/f405)

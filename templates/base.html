@@ -71,6 +71,9 @@
                 </a>
                 {% endif %}
                 <div style="position: absolute; bottom: 0; width: 100%; border-top: 1px solid #34495e;">
+                    <a href="/change-password" class="{% if request.url.path == '/change-password' %}active{% endif %}">
+                        <i class="bi bi-key"></i> Сменить пароль
+                    </a>
                     <a href="/logout" class="text-danger">
                         <i class="bi bi-box-arrow-left"></i> Выход
                     </a>

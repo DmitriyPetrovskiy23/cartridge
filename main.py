@@ -173,6 +173,62 @@ async def approve_registration(reg_id: int, request: Request, db: Session = Depe
     return RedirectResponse(url="/admin/registrations", status_code=303)
 
 
+@app.post("/admin/users/{user_id}/delete")
+async def delete_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+    if not request.session.get("is_admin"):
+        return RedirectResponse(url="/", status_code=303)
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        db.delete(user)
+        db.commit()
+    
+    return RedirectResponse(url="/admin/registrations", status_code=303)
+
+
+@app.get("/change-password", response_class=HTMLResponse)
+async def change_password_page(request: Request):
+    error = request.query_params.get("error")
+    success = request.query_params.get("success")
+    return templates.TemplateResponse("change_password.html", {
+        "request": request,
+        "error": error,
+        "success": success
+    })
+
+
+@app.post("/change-password")
+async def change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    from urllib.parse import quote
+    
+    if new_password != confirm_password:
+        return RedirectResponse(url="/change-password?error=" + quote("Новые пароли не совпадают"), status_code=303)
+    
+    user_id = request.session.get("user_id")
+    if user_id == 0:
+        if current_password != ADMIN_PASSWORD:
+            return RedirectResponse(url="/change-password?error=" + quote("Неверный текущий пароль"), status_code=303)
+        return RedirectResponse(url="/change-password?error=" + quote("Пароль администратора изменяется через секреты"), status_code=303)
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return RedirectResponse(url="/change-password?error=" + quote("Пользователь не найден"), status_code=303)
+    
+    if user.password_hash != hash_password(current_password):
+        return RedirectResponse(url="/change-password?error=" + quote("Неверный текущий пароль"), status_code=303)
+    
+    user.password_hash = hash_password(new_password)
+    db.commit()
+    
+    return RedirectResponse(url="/change-password?success=" + quote("Пароль успешно изменен"), status_code=303)
+
+
 @app.post("/admin/registrations/{reg_id}/reject")
 async def reject_registration(reg_id: int, request: Request, db: Session = Depends(get_db)):
     if not request.session.get("is_admin"):

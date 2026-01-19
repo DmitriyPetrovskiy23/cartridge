@@ -69,6 +69,7 @@
                             <th>ФИО</th>
                             <th>Email</th>
                             <th>Роль</th>
+                            <th>Действия</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -81,6 +82,15 @@
                                 <span class="badge bg-danger">Админ</span>
                                 {% else %}
                                 <span class="badge bg-secondary">Пользователь</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not user.is_admin %}
+                                <form method="POST" action="/admin/users/{{ user.id }}/delete" style="display: inline;" onsubmit="return confirm('Удалить пользователя {{ user.full_name }}?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
                                 {% endif %}
                             </td>
                         </tr>
